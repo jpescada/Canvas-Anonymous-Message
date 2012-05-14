@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Canvas + Flickr API</title>
+<style type="text/css">
+body { margin:0; padding:0; }
+#theStage { margin:10px; margin-bottom:0; border: 1px solid #CCCCCC; width:1198px; height:373px; background:url(images/grid.gif); }
+#theInput { display:block; margin:10px; width:650px; height:20px; font-size:14px; }
+input[type="button"] { margin:10px 0 10px 10px; cursor:pointer; }
+</style>
+<!--
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<script type="text/javascript" src="scripts/protoclass.js"></script>
+<script type="text/javascript" src="scripts/box2d.js"></script>
+-->
+<script type="text/javascript">
+
+var canvas;
+var context;
+var input;
+var reloadImages;
+var clockMode;
+var saveImage;
+var API_KEY = "94f32732dd14e33439ee0007566d1268";
+var VALID = "abcdefghijklmnopqrstuvwxyz";
+var SORT = ["date-posted-asc", "date-posted-desc", "date-taken-asc", "date-taken-desc", "interestingness-desc", "interestingness-asc", "relevance"];
+var UNITS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "twenty-one", "twenty-two", "twenty-three", "twenty-four", "twenty-five", "twenty-six", "twenty-seven", "twenty-eight", "twenty-nine", "thirty", "thirty-one", "thirty-two", "thirty-three", "thirty-four", "thirty-five", "thirty-six", "thirty-seven", "thirty-eight", "thirty-nine", "forty", "forty-one", "forty-two", "forty-three", "forty-four", "forty-five", "forty-six", "forty-seven", "forty-eight", "forty-nine", "fifty", "fifty-one", "fifty-two", "fifty-three", "fifty-four", "fifty-five", "fifty-six", "fifty-seven", "fifty-eight", "fifty-nine"];
+var letters;
+var lettersIndex;
+var inputText;
+var canvasImages;
+var col;
+var row;
+var isClockMode = false;
+var isProxyOn = false;
+var clockInterval;
+
+function _init()
+{
+	canvas = document.getElementById("theStage");
+	context = canvas.getContext("2d");
+	input = document.getElementById("theInput");
+	
+	reloadImages = document.getElementById("reloadImages");
+	clockMode = document.getElementById("clockMode");
+	saveImage = document.getElementById("saveImage");
+	
+	canvasImages = [];
+	_initLetters();
+	_getLists();
+}
+
+function _initLetters()
+{
+	letters = [];
+	lettersIndex = [];
+	
+	for (var i=0; i < VALID.length; i++)
+	{
+		var char = VALID.substr(i, 1);
+		letters[char] = [];
+		lettersIndex[char] = 0;
+	}
+}
+
+function _initInput()
+{
+	input.value = "";
+	input.disabled = false;
+	input.focus();
+	
+	setInterval( _checkInput, 500 );
+	setInterval( _drawCanvas, 100 );
+	
+	_initButtons();
+}
+
+function _initButtons()
+{
+	clockMode.disabled = false;
+	clockMode.onclick = _toggleClockMode;
+	
+	reloadImages.disabled = false;
+	reloadImages.onclick = _reloadImages;
+	
+	saveImage.onclick = _saveToDesktop;
+}
+
+function _initAsClock()
+{
+	clockInterval = setInterval( _updateClock, 1000 );
+}
+
+function _updateClock()
+{
+	//_log("@ _updateClock()");
+	
+	var now = new Date();
+	
+	var h = now.getHours();	
+	//convert to 12 hour clock
+	if (h > 12) h -= 12;
+	if (h == 0) h = 12;
+	
+	var m = now.getMinutes();
+	
+	var hTxt = h == 1 ? "hour" : "hours";
+	var mTxt = m == 1 ? "minute" : "minutes";
+	
+	//_log("h:"+ h +" | m:"+ m);
+	
+	var line1 = _addSpaces( UNITS[h] );
+	var line2 = _addSpaces( m == 0 ? "o clock" : hTxt );
+	var line3 = _addSpaces( m != 0 ? "and" : "" );
+	var line4 = _addSpaces( m != 0 ? UNITS[m] : "" );
+	var line5 = _addSpaces( m != 0 ? mTxt : "" );
+	
+	input.value = line1 + line2 + line3 + line4 + line5;
+}
+
+function _addSpaces(str)
+{
+	return str + Array( 16 - str.length + 1 ).join(" ");
+}
+
+function _checkInput()
+{	
+	if (input.value != inputText)
+	{
+		inputText = input.value;
+		_handleInputChange();
+	}
+}
+
+function _getLists()
+{
+	_log("Loading data from Flickr...");
+	input.value = "Loading data from Flickr...";
+	
+	_shuffle( SORT );
+	
+	//one letter: 27034531%40N00
+	var url = "http://api.flickr.com/services/rest/?" +
+	"method=flickr.photos.search&" +
+	"per_page=500&" +
+	"group_id=27034531%40N00&" +
+	"extras=tags&" + 
+	"api_key="+ API_KEY +"&"+
+	"sort="+ SORT[0] +"&"+
+	"format=json&" +
+	"jsoncallback=_handleFlickrPing";
+
+     var s = document.createElement("script");
+     s.type = "text/javascript";
+     s.src = url;
+     document.getElementsByTagName("head")[0].appendChild(s);
+
+	//one digit: 54718308@N00
+	//TODO: add one digit to search results
+}
+
+function _handleFlickrPing(result)
+{
+	if (result.photos)
+	{
+		_shuffle( result.photos.photo );
+		
+		var photo;
+		var tags;
+		var photosLen = result.photos.photo.length;
+
+		_log("Flickr list loaded!");
+		
+		for (var i = 0; i < photosLen; i++)
+		{
+			photo = result.photos.photo[i];
+			tags = photo.tags.split(" ");
+			var tagsLen = tags.length;
+
+			for (var j = 0; j < tagsLen; j++)
+			{
+				var char = "";
+				
+				//find single-letter tag
+				if (tags[j].length == 1)
+				{
+					if ( VALID.match( tags[j]) )
+					{
+						char = tags[j].toLowerCase();
+					}
+				}
+				
+				//find double-letter tag
+				if  (
+						tags[j].length == 2 && 
+						( tags[j].substr(0, 1) == tags[j].substr(1,1) ) 
+					)
+				{
+					char = tags[j].substr(0, 1).toLowerCase();
+				}
+				
+				if (char)
+				{
+					if (letters[char])
+					{
+						lettersIndex[char] = 0;
+						
+						var k = letters[char].length;
+						letters[char][k] = {};
+
+						//load via proxy to allow post processing
+						letters[char][k].proxyUrl = "services/image_proxy.php?url=" + encodeURIComponent("http://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg");	
+						letters[char][k].url = "http://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg";
+
+					}
+				}
+			}
+		}
+	}
+	
+	_initInput();
+}
+
+function _handleInputChange()
+{
+	//_log("Input changed to "+ inputText);
+	
+	var inputLen = inputText.length;
+	if (inputLen)
+	{		
+		// loop input letters
+		for (var i = 0; i < 80; i++)
+		{
+			// if img letters exists for character
+			var char = inputText.substr(i, 1).toLowerCase();
+			if (letters[char])
+			{
+				var itemsLen = letters[char].length;
+				if (itemsLen)
+				{
+					if (!canvasImages[i] || canvasImages[i].char != char) 
+					{
+						lettersIndex[char] = lettersIndex[char] < itemsLen-1 ? lettersIndex[char]+1 : 0;
+						var urlProp = isProxyOn ? "proxyUrl" : "url";
+						_createImage( i, char, letters[char][ lettersIndex[char] ][urlProp] );
+					}
+				}
+				else
+				{
+					_addEmptyImage(i, char);
+				}
+			}
+			else
+			{
+				_addEmptyImage(i, char);
+			}
+		}
+	}
+	else
+	{
+		_deleteImage(-1);	
+	}
+}
+
+function _addEmptyImage(pos, char)
+{
+	_log("@ _addEmptyImage() "+ pos +" | "+ char);
+	if (!canvasImages[pos] || canvasImages[pos].char != char) 
+	{
+		_createImage( pos, char, "images/grid.gif" );
+	}
+}
+
+function _createImage(pos, char, url )
+{
+	var photo = {};
+	photo.pos = pos;
+	photo.char = char;
+	photo.url = url;
+	photo.img = null;
+	photo.loaded = false;
+	photo.added = false;
+	
+	canvasImages[ pos ] = photo;
+	_loadImage(pos);
+}
+
+function _deleteImage(pos)
+{
+	if (pos == -1)
+	{
+		canvasImages = [];
+	}
+	else
+	{
+		canvasImages[ pos ].loaded = false;
+		canvasImages[ pos ].img = null;
+	}
+	
+	_clearImage(pos);
+}
+
+function _loadImage(pos)
+{
+	//_log("@ _loadImage()");
+	
+	var img = new Image();
+	//img.crossOrigin = "anonymous";	
+	//FIXME: check onload triggering when img is cached
+	img.onload = function()
+	{	
+		canvasImages[ pos ].loaded = true;
+	};
+	canvasImages[ pos ].img = img;
+	img.src = canvasImages[pos].url;
+}
+
+function _drawCanvas()
+{
+	//clear
+	context.clearRect( 0, 0, canvas.width, canvas.height);
+	
+	//find images to draw
+	var len = canvasImages.length;
+	var photo;
+	
+	for (var i = 0; i < len; i++)
+	{
+		photo = canvasImages[ i ];
+		if (photo)
+		{
+			if (photo.loaded/* && !photo.added*/)
+			{
+				_drawImage(i, photo.img);
+				photo.added = true;
+			}
+			else
+			{
+				//_clearImage(i);
+			}
+		}
+	}
+	
+	//if (isClockMode) _applyGreyscale();
+}
+
+function _drawImage(pos, img)
+{	
+	//_log("@ _drawImage() "+ pos +" | "+ col +" | "+ row);
+	
+	//store image in array
+	//canvasImages[pos] = img;
+	if (pos <= 15) row = 0;
+	if (pos > 15 && pos <= 31) row = 1;
+	if (pos > 31 && pos <= 47) row = 2;
+	if (pos > 47 && pos <= 63) row = 3;
+	if (pos > 63) row = 4;
+	
+	col = Math.floor( pos - 16 * row );
+		
+	//_log("pos:"+ pos +" | col:"+ col +" | row:"+ row);
+	
+	var i = {
+		x:75 * col,
+		y:75 * row,
+		w:75,
+		h:75
+	};
+	
+	context.drawImage( img, i.x, i.y, i.w, i.h );
+}
+
+function _clearImage(pos)
+{
+	if (pos == -1)
+	{
+		//canvasImages = [];
+		context.clearRect( 0, 0, canvas.width, canvas.height);
+	}
+	else
+	{
+		//canvasImages[pos] = null;
+		context.clearRect( 
+			0, 
+			0, 
+			75, 
+			75
+		);
+	}
+}
+
+function _reloadImages()
+{
+	_log("@ _reloadImages()");
+	inputText = "";
+	canvasImages = [];
+	
+	if (isClockMode) _gaq.push(["_trackEvent", "WordsClock", "Reloaded Images", input.value]);
+	else _gaq.push(["_trackEvent", "UserText", "Reloaded Images", input.value]);
+}
+
+function _reset()
+{
+	clearInterval( clockInterval );
+	input.value = "";
+	_reloadImages();
+}
+
+function _toggleClockMode()
+{
+	if (isClockMode)
+	{
+		isClockMode = false;
+		//isProxyOn = false;
+		
+		_reset();
+		input.disabled = false;
+		clockMode.value = "start words clock";
+
+		_gaq.push(["_trackEvent", "WordsClock", "Turned Off"]);
+	}
+	else
+	{
+		isClockMode = true;
+		//isProxyOn = true;
+		
+		input.disabled = true;
+		_initAsClock();
+		clockMode.value = "stop words clock";
+		
+		_gaq.push(["_trackEvent", "WordsClock", "Turned On"]);
+	}	
+}
+
+function _saveToDesktop()
+{
+	_log("@ _saveToDesktop()");
+	
+	var ajax = new XMLHttpRequest();
+	ajax.open( "POST", "services/save_image.php", false );
+	ajax.setRequestHeader( "Content-Type", "application/upload" );
+	ajax.send( canvas.toDataURL("image/png") );
+}
+
+function _shareOnFacebook()
+{
+	_log("@ _shareOnFacebook()");
+}
+
+function _shareOnTwitter()
+{
+	_log("@ _shareOnTwitter()");
+}
+
+function _applyGreyscale()
+{
+	//_log("@ _applyGreyscale()");
+	var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+	var data = imageData.data;
+
+	for (var i = 0; i < data.length; i += 4) 
+	{
+		var brightness = 0.34 * data[i] + 0.5 * data[i + 1] + 0.16 * data[i + 2];
+
+		data[i] = brightness; // red
+		data[i + 1] = brightness; // green
+		data[i + 2] = brightness; // blue
+		// i+3 is alpha (the fourth element)
+	}
+
+	// overwrite original image
+	context.putImageData(imageData, 0, 0);
+}
+
+function _shuffle(sourceArray) 
+{
+	var len = sourceArray.length
+	for (var n = 0; n < len - 1; n++) 
+	{
+		var k = n + Math.floor(Math.random() * (sourceArray.length - n));
+
+		var temp = sourceArray[k];
+		sourceArray[k] = sourceArray[n];
+		sourceArray[n] = temp;
+	}
+}
+
+function _log(args)
+{
+	console.log(args);
+}
+
+window.onload = _init;
+
+</script>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-1950548-22']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+</head>
+<body>
+<div>
+<canvas id="theStage" width="1198" height="373"></canvas>
+<input type="text" id="theInput" name="theInput" maxlength="80" value="Please wait..." disabled="disabled" />
+<input type="button" id="clockMode" name="clockMode" value="start words clock" disabled="disabled" />
+<input type="button" id="reloadImages" name="reloadImages" value="reload images" disabled="disabled" />
+<input type="button" id="saveImage" name="saveImage" value="save image to desktop" disabled="disabled" />
+<input type="button" id="shareOnFacebook" name="shareOnFacebook" value="share image on facebook" disabled="disabled" />
+<input type="button" id="shareOnTwitter" name="shareOnTwitter" value="share image on twitter" disabled="disabled" />
+</div>
+</body>
+</html>
