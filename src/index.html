@@ -4,7 +4,7 @@
 <title>Canvas + Flickr API</title>
 <style type="text/css">
 body { margin:0; padding:0; }
-#theStage { margin:10px; margin-bottom:0; border: 1px solid #CCCCCC; width:1198px; height:373px; background:url(images/grid.gif); }
+#theStage { margin:10px; margin-bottom:0; border: 1px solid #FFF; width:1198px; height:373px; background:url(images/clear.gif); }
 #theInput { display:block; margin:10px; width:650px; height:20px; font-size:14px; }
 input[type="button"] { margin:10px 0 10px 10px; cursor:pointer; }
 </style>
@@ -39,6 +39,7 @@ function _init()
 {
 	canvas = document.getElementById("theStage");
 	context = canvas.getContext("2d");
+	context.imageSmoothingEnabled = true;
 	input = document.getElementById("theInput");
 	
 	reloadImages = document.getElementById("reloadImages");
@@ -267,7 +268,7 @@ function _addEmptyImage(pos, char)
 	_log("@ _addEmptyImage() "+ pos +" | "+ char);
 	if (!canvasImages[pos] || canvasImages[pos].char != char) 
 	{
-		_createImage( pos, char, "images/grid.gif" );
+		_createImage( pos, char, "images/clear.gif" );
 	}
 }
 
