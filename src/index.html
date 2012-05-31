@@ -7,9 +7,11 @@ body { margin:0; padding:0; }
 #theStage { margin:10px; margin-bottom:0; border: 1px solid #FFF; width:1198px; height:373px; background:url(images/clear.gif); }
 #theInput { display:block; margin:10px; width:650px; height:20px; font-size:14px; }
 input[type="button"] { margin:10px 0 10px 10px; cursor:pointer; }
+em {margin:0 0 0 10px; color:#999;}
 </style>
-<!--
+
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<!--
 <script type="text/javascript" src="scripts/protoclass.js"></script>
 <script type="text/javascript" src="scripts/box2d.js"></script>
 -->
@@ -22,13 +24,19 @@ var reloadImages;
 var clockMode;
 var saveImage;
 var API_KEY = "94f32732dd14e33439ee0007566d1268";
-var VALID = "abcdefghijklmnopqrstuvwxyz";
+var VALID_LETTERS = "abcdefghijklmnopqrstuvwxyz";
+var VALID_NUMBERS = "0123456789";
 var SORT = ["date-posted-asc", "date-posted-desc", "date-taken-asc", "date-taken-desc", "interestingness-desc", "interestingness-asc", "relevance"];
 var UNITS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "twenty-one", "twenty-two", "twenty-three", "twenty-four", "twenty-five", "twenty-six", "twenty-seven", "twenty-eight", "twenty-nine", "thirty", "thirty-one", "thirty-two", "thirty-three", "thirty-four", "thirty-five", "thirty-six", "thirty-seven", "thirty-eight", "thirty-nine", "forty", "forty-one", "forty-two", "forty-three", "forty-four", "forty-five", "forty-six", "forty-seven", "forty-eight", "forty-nine", "fifty", "fifty-one", "fifty-two", "fifty-three", "fifty-four", "fifty-five", "fifty-six", "fifty-seven", "fifty-eight", "fifty-nine"];
 var letters;
 var lettersIndex;
+var lettersLoaded = false;
+var numbers;
+var numbersIndex;
+var numbersLoaded = false;
 var inputText;
 var canvasImages;
+var canvasCovers;
 var col;
 var row;
 var isClockMode = false;
@@ -47,7 +55,9 @@ function _init()
 	saveImage = document.getElementById("saveImage");
 	
 	canvasImages = [];
+	canvasCovers = [];
 	_initLetters();
+	_initNumbers();
 	_getLists();
 }
 
@@ -55,17 +65,34 @@ function _initLetters()
 {
 	letters = [];
 	lettersIndex = [];
+	lettersLoaded = false;
 	
-	for (var i=0; i < VALID.length; i++)
+	for (var i=0; i < VALID_LETTERS.length; i++)
 	{
-		var char = VALID.substr(i, 1);
+		var char = VALID_LETTERS.substr(i, 1);
 		letters[char] = [];
 		lettersIndex[char] = 0;
 	}
 }
 
+function _initNumbers()
+{
+	numbers = [];
+	numbersIndex = [];
+	numbersLoaded = false;
+	
+	for (var i=0; i < VALID_NUMBERS.length; i++)
+	{
+		var num = VALID_NUMBERS.substr(i, 1);
+		numbers[num] = [];
+		numbersIndex[num] = 0;
+	}
+}
+
 function _initInput()
 {
+	if (!lettersLoaded || !numbersLoaded) return;
+	
 	input.value = "";
 	input.disabled = false;
 	input.focus();
@@ -141,7 +168,7 @@ function _getLists()
 	_shuffle( SORT );
 	
 	//one letter: 27034531%40N00
-	var url = "http://api.flickr.com/services/rest/?" +
+	var lettersURL = "http://api.flickr.com/services/rest/?" +
 	"method=flickr.photos.search&" +
 	"per_page=500&" +
 	"group_id=27034531%40N00&" +
@@ -149,18 +176,32 @@ function _getLists()
 	"api_key="+ API_KEY +"&"+
 	"sort="+ SORT[0] +"&"+
 	"format=json&" +
-	"jsoncallback=_handleFlickrPing";
+	"jsoncallback=_handleFlickrLettersLoaded";
 
      var s = document.createElement("script");
      s.type = "text/javascript";
-     s.src = url;
+     s.src = lettersURL;
      document.getElementsByTagName("head")[0].appendChild(s);
 
+
 	//one digit: 54718308@N00
-	//TODO: add one digit to search results
+	var numbersURL = "http://api.flickr.com/services/rest/?" +
+	"method=flickr.photos.search&" +
+	"per_page=500&" +
+	"group_id=54718308@N00&" +
+	"extras=tags&" + 
+	"api_key="+ API_KEY +"&"+
+	"sort="+ SORT[0] +"&"+
+	"format=json&" +
+	"jsoncallback=_handleFlickrNumbersLoaded";
+
+     var s = document.createElement("script");
+     s.type = "text/javascript";
+     s.src = numbersURL;
+     document.getElementsByTagName("head")[0].appendChild(s);
 }
 
-function _handleFlickrPing(result)
+function _handleFlickrLettersLoaded(result)
 {
 	if (result.photos)
 	{
@@ -170,7 +211,7 @@ function _handleFlickrPing(result)
 		var tags;
 		var photosLen = result.photos.photo.length;
 
-		_log("Flickr list loaded!");
+		_log("Flickr letters list loaded!");
 		
 		for (var i = 0; i < photosLen; i++)
 		{
@@ -185,7 +226,7 @@ function _handleFlickrPing(result)
 				//find single-letter tag
 				if (tags[j].length == 1)
 				{
-					if ( VALID.match( tags[j]) )
+					if ( VALID_LETTERS.match( tags[j]) )
 					{
 						char = tags[j].toLowerCase();
 					}
@@ -219,6 +260,70 @@ function _handleFlickrPing(result)
 		}
 	}
 	
+	lettersLoaded = true;
+	_initInput();
+}
+
+function _handleFlickrNumbersLoaded(result)
+{
+	if (result.photos)
+	{
+		_shuffle( result.photos.photo );
+		
+		var photo;
+		var tags;
+		var photosLen = result.photos.photo.length;
+
+		_log("Flickr numbers list loaded!");
+		
+		for (var i = 0; i < photosLen; i++)
+		{
+			photo = result.photos.photo[i];
+			tags = photo.tags.split(" ");
+			var tagsLen = tags.length;
+
+			for (var j = 0; j < tagsLen; j++)
+			{
+				var num = "";
+				
+				//find single-digit tag
+				if (tags[j].length == 1)
+				{
+					if ( VALID_NUMBERS.match( tags[j]) )
+					{
+						num = tags[j].toLowerCase();
+					}
+				}
+				
+				//find double-digit tag
+				if  (
+						tags[j].length == 2 && 
+						( tags[j].substr(0, 1) == tags[j].substr(1,1) ) 
+					)
+				{
+					num = tags[j].substr(0, 1).toLowerCase();
+				}
+				
+				if (num)
+				{
+					if (numbers[num])
+					{
+						numbersIndex[num] = 0;
+						
+						var k = numbers[num].length;
+						numbers[num][k] = {};
+
+						//load via proxy to allow post processing
+						numbers[num][k].proxyUrl = "services/image_proxy.php?url=" + encodeURIComponent("http://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg");	
+						numbers[num][k].url = "http://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg";
+
+					}
+				}
+			}
+		}
+	}
+	
+	numbersLoaded = true;
 	_initInput();
 }
 
@@ -228,10 +333,26 @@ function _handleInputChange()
 	
 	var inputLen = inputText.length;
 	if (inputLen)
-	{		
+	{				
 		// loop input letters
 		for (var i = 0; i < 80; i++)
 		{
+			// if img digits exists for digit
+			var num = inputText.substr(i, 1).toLowerCase();
+			if (numbers[num])
+			{
+				var itemsLen = numbers[num].length;
+				if (itemsLen)
+				{
+					if (!canvasImages[i] || canvasImages[i].char != num) 
+					{
+						numbersIndex[num] = numbersIndex[num] < itemsLen-1 ? numbersIndex[num]+1 : 0;
+						var urlProp = isProxyOn ? "proxyUrl" : "url";
+						_createImage( i, num, numbers[num][ numbersIndex[num] ][urlProp] );
+					}
+				}
+			}
+			
 			// if img letters exists for character
 			var char = inputText.substr(i, 1).toLowerCase();
 			if (letters[char])
@@ -257,15 +378,11 @@ function _handleInputChange()
 			}
 		}
 	}
-	else
-	{
-		_deleteImage(-1);	
-	}
 }
 
 function _addEmptyImage(pos, char)
 {
-	_log("@ _addEmptyImage() "+ pos +" | "+ char);
+	//_log("@ _addEmptyImage() "+ pos +" | "+ char);
 	if (!canvasImages[pos] || canvasImages[pos].char != char) 
 	{
 		_createImage( pos, char, "images/clear.gif" );
@@ -310,6 +427,7 @@ function _loadImage(pos)
 	//FIXME: check onload triggering when img is cached
 	img.onload = function()
 	{	
+		canvasImages[ pos ].alpha = 0;
 		canvasImages[ pos ].loaded = true;
 	};
 	canvasImages[ pos ].img = img;
@@ -517,6 +635,9 @@ window.onload = _init;
 <input type="button" id="saveImage" name="saveImage" value="save image to desktop" disabled="disabled" />
 <input type="button" id="shareOnFacebook" name="shareOnFacebook" value="share image on facebook" disabled="disabled" />
 <input type="button" id="shareOnTwitter" name="shareOnTwitter" value="share image on twitter" disabled="disabled" />
+<br>
+<br>
+<em>This is an experimental project and, therefore, in constant mutation.</em>
 </div>
 </body>
 </html>
