@@ -9,9 +9,8 @@ body { margin:0; padding:0; }
 input[type="button"] { margin:10px 0 10px 10px; cursor:pointer; }
 em {margin:0 0 0 10px; color:#999;}
 </style>
-
-<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
 <!--
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
 <script type="text/javascript" src="scripts/protoclass.js"></script>
 <script type="text/javascript" src="scripts/box2d.js"></script>
 -->
@@ -178,10 +177,10 @@ function _getLists()
 	"format=json&" +
 	"jsoncallback=_handleFlickrLettersLoaded";
 
-     var s = document.createElement("script");
-     s.type = "text/javascript";
-     s.src = lettersURL;
-     document.getElementsByTagName("head")[0].appendChild(s);
+	var s = document.createElement("script");
+	s.type = "text/javascript";
+	s.src = lettersURL;
+	document.getElementsByTagName("head")[0].appendChild(s);
 
 
 	//one digit: 54718308@N00
@@ -195,10 +194,10 @@ function _getLists()
 	"format=json&" +
 	"jsoncallback=_handleFlickrNumbersLoaded";
 
-     var s = document.createElement("script");
-     s.type = "text/javascript";
-     s.src = numbersURL;
-     document.getElementsByTagName("head")[0].appendChild(s);
+	var s = document.createElement("script");
+	s.type = "text/javascript";
+	s.src = numbersURL;
+	document.getElementsByTagName("head")[0].appendChild(s);
 }
 
 function _handleFlickrLettersLoaded(result)
@@ -377,6 +376,10 @@ function _handleInputChange()
 				_addEmptyImage(i, char);
 			}
 		}
+	}
+	else
+	{
+		_reset();
 	}
 }
 
@@ -606,6 +609,7 @@ function _shuffle(sourceArray)
 
 function _log(args)
 {
+	if (typeof(console) === "undefined") var console = { log:function(){} };
 	console.log(args);
 }
 
@@ -614,15 +618,15 @@ window.onload = _init;
 </script>
 <script type="text/javascript">
 
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-1950548-22']);
-  _gaq.push(['_trackPageview']);
+	var _gaq = _gaq || [];
+	_gaq.push(['_setAccount', 'UA-1950548-22']);
+	_gaq.push(['_trackPageview']);
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
+	(function() {
+		var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+		ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+		var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+	})();
 
 </script>
 </head>
