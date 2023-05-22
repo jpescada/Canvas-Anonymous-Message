@@ -168,7 +168,7 @@ function _getLists()
 	_shuffle( SORT );
 	
 	//one letter: 27034531%40N00
-	var lettersURL = "http://api.flickr.com/services/rest/?" +
+	var lettersURL = "https://api.flickr.com/services/rest/?" +
 	"method=flickr.photos.search&" +
 	"per_page=500&" +
 	"group_id=27034531%40N00&" +
@@ -185,7 +185,7 @@ function _getLists()
 
 
 	//one digit: 54718308@N00
-	var numbersURL = "http://api.flickr.com/services/rest/?" +
+	var numbersURL = "https://api.flickr.com/services/rest/?" +
 	"method=flickr.photos.search&" +
 	"per_page=500&" +
 	"group_id=54718308@N00&" +
@@ -251,8 +251,8 @@ function _handleFlickrLettersLoaded(result)
 						letters[char][k] = {};
 
 						//load via proxy to allow post processing
-						letters[char][k].proxyUrl = "services/image_proxy.php?url=" + encodeURIComponent("http://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg");	
-						letters[char][k].url = "http://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg";
+						letters[char][k].proxyUrl = "services/image_proxy.php?url=" + encodeURIComponent("https://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg");	
+						letters[char][k].url = "https://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg";
 
 					}
 				}
@@ -314,8 +314,8 @@ function _handleFlickrNumbersLoaded(result)
 						numbers[num][k] = {};
 
 						//load via proxy to allow post processing
-						numbers[num][k].proxyUrl = "services/image_proxy.php?url=" + encodeURIComponent("http://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg");	
-						numbers[num][k].url = "http://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg";
+						numbers[num][k].proxyUrl = "services/image_proxy.php?url=" + encodeURIComponent("https://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg");	
+						numbers[num][k].url = "https://farm"+ photo.farm +".static.flickr.com/"+ photo.server +"/"+ photo.id +"_"+ photo.secret +"_s.jpg";
 
 					}
 				}
